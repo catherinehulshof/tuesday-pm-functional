@@ -5,13 +5,128 @@ date: "June 21, 2016"
 output: html_document
 ---
 
+```{r load-libraries }
+library(raster)
+library(rhdf5)
+library(rgdal)
+```
+
 ## Objectives
 
 1. Import a raster — A lidar canopy height model (lidar/Teak_lidarCHM.tif)
+
+
+```{r import raster }
+# read LiDAR canopy height model
+chm <- raster("../NEONdata/D17-California/TEAK/2013/lidar/TEAK_lidarCHM.tif")
+```
+
 1. For the CHM, set values == 0 to NA (not trees)
-1. Classify the raster according to some distribution – low medium and tall trees. This could be done using a histogram potentially or we could just decide that <2m is generally grasses / understory, <6m small trees,and the rest are tall trees. A function could import the desired thresholds. Visualize histogram/density and plot vertical cutoff lines.
-1. Take the chm and create a hillshade (http://neon-workwithdata.github.io/neon-data-institute-2016/R/create-hillshade-R/)
-PLOT - layer the classified raster on top of the hillshade, add a legend for each “class” - legends are super tricky to simplifying this process with a function would be good.  see: http://neon-workwithdata.github.io/neon-data-institute-2016/R/classify-by-threshold-R/  for my take on forcing a legend outside of the plot area using par settings. You may have other better forms of magic to make this work well. :)
-1. Export the plot figure to a pdf – publishable
+
+```{r assign-class }
+# assign chm values of 0 to NA
+chm[chm==0] <- NA
+
+# do the values in the data look reasonable?
+plot(chm,
+     main="Canopy Height \n LowerTeakettle, California")
+```
+
+1. Classify the raster according to some distribution – low medium and tall trees. This could be done using a histogram potentially or we could just decide that <2m is generally grasses / understory, <6m small trees,and the rest are tall trees. A function could import the desired thresholds. Visualize density and plot vertical cutoff lines.
+
+```{r histogram }
+
+hist(chm,
+     main="Distribution of Canopy Height  \n Lower Teakettle, California",
+     xlab="Tree Height (m)",
+     col="springgreen")
+abline(v = 6,lwd=2,col="red")
+abline(v=10,lwd=2,col="red")
+
+```
+
+
+```{r matrix-class }
+
+# first create a matrix of values that represent the classification ranges
+
+class.m <- c(0, 6, 1,
+             6, 10, 2,
+             10, 60, 3)
+class.m
+
+rcl.m <- matrix(class.m, 
+                ncol=3, 
+                byrow=TRUE)
+rcl.m
+
+# reclassify the raster using the reclass object - rcl.m
+asp.ns <- reclassify(chm, 
+                     rcl.m)
+
+```
+
+     
+1. Plot the classified raster, add a legend for each “class” - legends are super tricky to simplifying this process with a function would be good.  see: http://neon-workwithdata.github.io/neon-data-institute-2016/R/classify-by-threshold-R/  for my take on forcing a legend outside of the plot area using par settings. You may have other better forms of magic to make this work well. :)
+
+
+```{r plot }
+
+# make room for a legend
+par(xpd = FALSE, mar=c(5.1, 4.1, 4.1, 4.5))
+# plot
+plot(asp.ns,
+     col=c("red","blue","green"), # hard code colors, unclassified (1)=red,
+		 #N (2) =blue, S(3)=green
+     main="Tree Canopy Height class  \n Lower Teakettle, California",
+     legend=F)
+# allow legend to plot outside of bounds
+par(xpd=TRUE)
+# create the legend
+legend((par()$usr[2] + 20), 4103300,  # set x,y legend location
+       legend = c("Grasses/Understorey", "Small Trees", "Tall Trees"),  # make sure the order matches the colors, next
+       fill = c("red", "blue", "green"),
+       bty="n") # turn off border
+```
+
 1. Export the classified raster as a geotiff with NaFlagg = -9999 to an outputs folder.
+
+```{r export geotiff }
+
+writeRaster(asp.ns,
+            filename="../outputs/TEAK/Teak_Treeheightclass.tif",
+            format="GTiff",
+            options="COMPRESS=LZW",
+            overwrite = TRUE,
+            NAflag = -9999)
+
+```
+
+
+1. Export the plot figure to a pdf
+
+```{r make pdf }
+
+pdf("../outputs/TEAK/Teak_Treeheightclass.pdf", width=6, height=6)
+# make room for a legend
+par(xpd = FALSE, mar=c(5.1, 4.1, 4.1, 4.5))
+# plot
+plot(asp.ns,
+     col=c("red","blue","green"), # hard code colors, unclassified (1)=red,
+		 #N (2) =blue, S(3)=green
+     main="Tree Canopy Height class  \n Lower Teakettle, California",
+     legend=F)
+# allow legend to plot outside of bounds
+par(xpd=TRUE)
+# create the legend
+legend((par()$usr[2] + 20), 4103300,  # set x,y legend location
+       legend = c("Grasses/Understorey", "Small Trees", "Tall Trees"),  # make sure the order matches the colors, next
+       fill = c("red", "blue", "green"),
+       bty="n") # turn off border
+
+dev.off()
+```
+
+
+
 
