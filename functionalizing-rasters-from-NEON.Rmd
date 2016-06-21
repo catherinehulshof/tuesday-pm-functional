@@ -61,8 +61,7 @@ rcl.m <- matrix(class.m,
 rcl.m
 
 # reclassify the raster using the reclass object - rcl.m
-asp.ns <- reclassify(chm, 
-                     rcl.m)
+asp.ns <- reclassify(chm, rcl.m)
 
 ```
 
